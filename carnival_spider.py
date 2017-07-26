@@ -138,14 +138,14 @@ class Handler(BaseHandler):
         # 出发时间
         departureDate = str(result['departureDate']).replace('Z','').replace('T',' ')[:-4]
         departureDate = time.strptime(departureDate, "%Y-%m-%d %H:%M:%S")
-        y, m, d, h, mm, s = now_time[0:6]
+        y, m, d, h, mm, s = departureDate[0:6]
         departureDate = datetime(y, m, d, h, mm, s)
         # print '出发时间',type(departureDate)
         trip['departureDate'] = departureDate
         # 到达时间
         arrivalDate = str(result['arrivalDate']).replace('Z','').replace('T',' ')[:-4]
         arrivalDate = time.strptime(arrivalDate, "%Y-%m-%d %H:%M:%S")
-        y, m, d, h, mm, s = now_time[0:6]
+        y, m, d, h, mm, s = arrivalDate[0:6]
         arrivalDate = datetime(y, m, d, h, mm, s)
         # print '到达时间',arrivalDate
         trip['arrivalDate'] = arrivalDate
