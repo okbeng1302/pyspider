@@ -7,12 +7,30 @@ from pyspider.libs.base_handler import *
 import json
 import time
 import pymongo
-import datetime
-
+#import datetime
+from datetime import datetime, timedelta, tzinfo
 # 本地 mongodb 地址
 MONGODB_IP = 'localhost'
 MONGODB_PORT = 27017
 
+class FixedOffset(tzinfo):
+    """offset_str: Fixed offset in str: e.g. '-0400'"""
+    def __init__(self, offset_str):
+        sign, hours, minutes = offset_str[0], offset_str[1:3], offset_str[3:]
+        offset = (int(hours) * 60 + int(minutes)) * (-1 if sign == "-" else 1)
+        self.__offset = timedelta(minutes=offset)
+        # NOTE: the last part is to remind about deprecated POSIX GMT+h timezones
+        # that have the opposite sign in the name;
+        # the corresponding numeric value is not used e.g., no minutes
+        '<%+03d%02d>%+d' % (int(hours), int(minutes), int(hours)*-1)
+    def utcoffset(self, dt=None):
+        return self.__offset
+    def tzname(self, dt=None):
+        return self.__name
+    def dst(self, dt=None):
+        return timedelta(0)
+    def __repr__(self):
+        return 'FixedOffset(%d)' % (self.utcoffset().total_seconds() / 60)
 
 class Handler(BaseHandler):
     crawl_config = {
@@ -99,11 +117,12 @@ class Handler(BaseHandler):
         db = client.research
         carnival_trip_info = db.carnival_trip_info
         # 当前时间
-        now = datetime.datetime.now()  # 这是数组时间格式
+        now = datetime.now()  # 这是数组时间格式
         now_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        print now_time,type(now_time)
         now_time = time.strptime(now_time, "%Y-%m-%d %H:%M:%S")
         y, m, d, h, mm, s = now_time[0:6]
-        update_time = datetime.datetime(y, m, d, h, mm, s)
+        update_time = datetime(y, m, d, h, mm, s)
         trip = {}
         trip['departurePortName'] = result['departurePortName']
         trip['regionName'] = result['regionName']
@@ -116,6 +135,18 @@ class Handler(BaseHandler):
         trip['balcony_price'] = result['balcony_price']
         trip['suite_price'] = result['suite_price']
         trip['update_time'] = update_time
-        trip['departureDate'] = result['departureDate']
-        trip['arrivalDate'] = result['arrivalDate']
+        # 出发时间
+        departureDate = str(result['departureDate']).replace('Z','').replace('T',' ')[:-4]
+        departureDate = time.strptime(departureDate, "%Y-%m-%d %H:%M:%S")
+        y, m, d, h, mm, s = now_time[0:6]
+        departureDate = datetime(y, m, d, h, mm, s)
+        # print '出发时间',type(departureDate)
+        trip['departureDate'] = departureDate
+        # 到达时间
+        arrivalDate = str(result['arrivalDate']).replace('Z','').replace('T',' ')[:-4]
+        arrivalDate = time.strptime(arrivalDate, "%Y-%m-%d %H:%M:%S")
+        y, m, d, h, mm, s = now_time[0:6]
+        arrivalDate = datetime(y, m, d, h, mm, s)
+        # print '到达时间',arrivalDate
+        trip['arrivalDate'] = arrivalDate
         carnival_trip_info.insert(trip)
